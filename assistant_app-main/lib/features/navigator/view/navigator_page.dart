@@ -26,13 +26,13 @@ class _NavigatorPageState extends State<NavigatorPage> {
 
   void _initializeSocket() {
     print("Navigator: Initializing socket connection");
-    _socket.connect('ws://localhost:8080');
-    
+    _socket.connect('ws://assistant-socket-server.onrender.comit');
+
     // Wait a bit for connection to establish, then send role
     Future.delayed(const Duration(milliseconds: 500), () {
       _socket.sendRole('navigator');
     });
-    
+
     _socket.onImageReceived = (data) {
       // print("Navigator: Received image data: ${data.length} bytes");
       setState(() => _imageBytes = data);
@@ -50,32 +50,38 @@ class _NavigatorPageState extends State<NavigatorPage> {
       print("Navigator: No current stroke to send");
       return;
     }
-    
+
     print("Navigator: Sending drawing with ${_currentStroke.length} points");
-    print("Navigator: Mode: $_mode, Color: ${_colorToHex(_drawColor)}, Stroke: $_strokeWidth");
-    
+    print(
+      "Navigator: Mode: $_mode, Color: ${_colorToHex(_drawColor)}, Stroke: $_strokeWidth",
+    );
+
     // Convert current stroke to the format expected by socket
-    final strokeData = _currentStroke.map((point) => {
-      'x': point.dx / size.width,
-      'y': point.dy / size.height,
-      'mode': _mode,
-      'color': _colorToHex(_drawColor),
-      'strokeWidth': _strokeWidth,
-    }).toList();
-    
+    final strokeData = _currentStroke
+        .map(
+          (point) => {
+            'x': point.dx / size.width,
+            'y': point.dy / size.height,
+            'mode': _mode,
+            'color': _colorToHex(_drawColor),
+            'strokeWidth': _strokeWidth,
+          },
+        )
+        .toList();
+
     // Add to all strokes for local display
     _allStrokes.add(strokeData);
-    
+
     // Send via socket
     _socket.sendDrawingPoints(
-      _currentStroke, 
-      size.width, 
-      size.height, 
+      _currentStroke,
+      size.width,
+      size.height,
       _mode,
-      color: _colorToHex(_drawColor), 
-      strokeWidth: _strokeWidth
+      color: _colorToHex(_drawColor),
+      strokeWidth: _strokeWidth,
     );
-    
+
     // Clear current stroke but keep the drawing visible
     setState(() {
       _currentStroke.clear();
@@ -128,22 +134,30 @@ class _NavigatorPageState extends State<NavigatorPage> {
                   icon: const Icon(Icons.brush),
                   label: const Text('Draw'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _mode == 'draw' ? Colors.blue : Colors.grey[300],
-                    foregroundColor: _mode == 'draw' ? Colors.white : Colors.black,
+                    backgroundColor: _mode == 'draw'
+                        ? Colors.blue
+                        : Colors.grey[300],
+                    foregroundColor: _mode == 'draw'
+                        ? Colors.white
+                        : Colors.black,
                   ),
                 ),
-                
+
                 // Erase Mode Button
                 ElevatedButton.icon(
                   onPressed: () => setState(() => _mode = 'erase'),
                   icon: const Icon(Icons.cleaning_services),
                   label: const Text('Erase'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _mode == 'erase' ? Colors.red : Colors.grey[300],
-                    foregroundColor: _mode == 'erase' ? Colors.white : Colors.black,
+                    backgroundColor: _mode == 'erase'
+                        ? Colors.red
+                        : Colors.grey[300],
+                    foregroundColor: _mode == 'erase'
+                        ? Colors.white
+                        : Colors.black,
                   ),
                 ),
-                
+
                 // Clear All Button
                 ElevatedButton.icon(
                   onPressed: _clearAllDrawings,
@@ -154,7 +168,7 @@ class _NavigatorPageState extends State<NavigatorPage> {
                     foregroundColor: Colors.white,
                   ),
                 ),
-                
+
                 // Color Picker
                 if (_mode == 'draw') ...[
                   PopupMenuButton<Color>(
@@ -168,36 +182,42 @@ class _NavigatorPageState extends State<NavigatorPage> {
                       ),
                     ),
                     onSelected: (color) => setState(() => _drawColor = color),
-                    itemBuilder: (context) => [
-                      Colors.red,
-                      Colors.blue,
-                      Colors.green,
-                      Colors.yellow,
-                      Colors.purple,
-                      Colors.orange,
-                    ]
-                        .map((color) => PopupMenuItem(
-                              value: color,
-                              child: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  shape: BoxShape.circle,
+                    itemBuilder: (context) =>
+                        [
+                              Colors.red,
+                              Colors.blue,
+                              Colors.green,
+                              Colors.yellow,
+                              Colors.purple,
+                              Colors.orange,
+                            ]
+                            .map(
+                              (color) => PopupMenuItem(
+                                value: color,
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
                               ),
-                            ))
-                        .toList(),
+                            )
+                            .toList(),
                   ),
                 ],
               ],
             ),
           ),
-          
+
           // Stroke Width Slider (only for draw mode)
           if (_mode == 'draw')
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ),
               child: Row(
                 children: [
                   const Text('Brush Size: '),
@@ -208,14 +228,15 @@ class _NavigatorPageState extends State<NavigatorPage> {
                       max: 10.0,
                       divisions: 9,
                       label: _strokeWidth.round().toString(),
-                      onChanged: (value) => setState(() => _strokeWidth = value),
+                      onChanged: (value) =>
+                          setState(() => _strokeWidth = value),
                     ),
                   ),
                   Text('${_strokeWidth.round()}'),
                 ],
               ),
             ),
-          
+
           // Drawing Area
           Expanded(
             child: LayoutBuilder(
@@ -226,10 +247,9 @@ class _NavigatorPageState extends State<NavigatorPage> {
                 onPanUpdate: (details) {
                   setState(() => _currentStroke.add(details.localPosition));
                 },
-                onPanEnd: (_) => _sendDrawings(Size(
-                  constraints.maxWidth,
-                  constraints.maxHeight,
-                )),
+                onPanEnd: (_) => _sendDrawings(
+                  Size(constraints.maxWidth, constraints.maxHeight),
+                ),
                 child: Container(
                   width: double.infinity,
                   height: double.infinity,
@@ -238,10 +258,7 @@ class _NavigatorPageState extends State<NavigatorPage> {
                       // Camera feed background
                       if (_imageBytes != null)
                         Positioned.fill(
-                          child: Image.memory(
-                            _imageBytes!,
-                            fit: BoxFit.cover,
-                          ),
+                          child: Image.memory(_imageBytes!, fit: BoxFit.cover),
                         )
                       else
                         Container(
@@ -249,11 +266,14 @@ class _NavigatorPageState extends State<NavigatorPage> {
                           child: const Center(
                             child: Text(
                               'Waiting for camera feed...',
-                              style: TextStyle(fontSize: 18, color: Colors.grey),
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey,
+                              ),
                             ),
                           ),
                         ),
-                      
+
                       // Drawing overlay
                       CustomPaint(
                         painter: _DrawPainter(
@@ -297,7 +317,7 @@ class _DrawPainter extends CustomPainter {
     // Draw all completed strokes
     for (final stroke in allStrokes) {
       if (stroke.isEmpty) continue;
-      
+
       final paint = Paint()
         ..strokeWidth = (stroke.first['strokeWidth'] as double)
         ..strokeCap = StrokeCap.round
@@ -319,14 +339,14 @@ class _DrawPainter extends CustomPainter {
         (firstPoint['x'] as double) * size.width,
         (firstPoint['y'] as double) * size.height,
       );
-      
+
       for (int i = 1; i < stroke.length; i++) {
         path.lineTo(
           (stroke[i]['x'] as double) * size.width,
           (stroke[i]['y'] as double) * size.height,
         );
       }
-      
+
       canvas.drawPath(path, paint);
     }
 
@@ -348,11 +368,11 @@ class _DrawPainter extends CustomPainter {
       if (currentStroke.length > 1) {
         final path = Path();
         path.moveTo(currentStroke[0].dx, currentStroke[0].dy);
-        
+
         for (int i = 1; i < currentStroke.length; i++) {
           path.lineTo(currentStroke[i].dx, currentStroke[i].dy);
         }
-        
+
         canvas.drawPath(path, paint);
       }
     }
@@ -366,4 +386,3 @@ class _DrawPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _DrawPainter oldDelegate) => true;
 }
-
